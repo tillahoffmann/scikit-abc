@@ -1,0 +1,7 @@
+-e file:.
+black
+myst-parser
+pip-tools
+pydata-sphinx-theme
+pytest
+sphinx
