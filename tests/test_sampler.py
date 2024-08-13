@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 import skabc
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import QuantileTransformer
 
 
 @pytest.mark.parametrize(
@@ -28,12 +30,13 @@ import skabc
         ),
     ],
 )
-def test_estimator_fail(estimator, X, y) -> None:
+def test_estimator_fail(estimator: skabc.NearestNeighborSampler, X, y) -> None:
     with pytest.raises(ValueError):
         estimator.fit(X, y)
 
 
-def test_vanilla_normal() -> None:
+@pytest.mark.parametrize("pipeline", [False, True])
+def test_vanilla_normal(pipeline: bool) -> None:
     def _model(rng, n, sigma, size) -> tuple[np.ndarray, np.ndarray]:
         size = size or ()
         mu = rng.normal(0, 1, size + (1,))
@@ -49,7 +52,15 @@ def test_vanilla_normal() -> None:
     x, _ = _model(rng, n, sigma, (5,))
     y, nu = _model(rng, n, sigma, (1_000_000,))
 
-    sampler = skabc.NearestNeighborSampler(frac_neighbors=1e-3).fit(y, nu)
+    sampler = skabc.NearestNeighborSampler(frac_neighbors=1e-3)
+    if pipeline:
+        sampler = Pipeline(
+            [
+                ("transform", QuantileTransformer()),
+                ("sample", sampler),
+            ]
+        )
+    sampler.fit(y, nu)
     samples = sampler.predict(x)
     assert samples.shape == (5, 1000, 1)
 
